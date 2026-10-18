@@ -64,7 +64,7 @@ export async function* streamNotion(options, request, model, { fetchFn = globalT
       signal, transcript: payload.transcript, threadId: payload.threadId,
       completionMode: options.completionMode,
       terminalType: options.terminalType, terminalPath: options.terminalPath, terminalValue: options.terminalValue,
-      idleTimeoutMs: options.idleTimeoutMs, maxResponseBytes: options.maxResponseBytes,
+      idleTimeoutMs: options.idleTimeoutMs, firstByteTimeoutMs: options.timeoutMs, maxResponseBytes: options.maxResponseBytes,
       onFrame: capture ? (frame) => frames.push(frame) : undefined,
     });
     try {
@@ -74,7 +74,10 @@ export async function* streamNotion(options, request, model, { fetchFn = globalT
       if (capture) await capture.record('inference', { requestBody: payload, headers, frames });
     }
   } catch (error) {
-    if (signal.aborted) throw new NotionError(timeout.signal.aborted ? 'Notion 请求超时。' : 'Notion 请求已取消。', timeout.signal.aborted ? 'TIMEOUT' : 'ABORTED');
+    if (signal.aborted) {
+      if (timeout.signal.aborted && error instanceof NotionError && error.code === 'TIMEOUT') throw error;
+      throw new NotionError(timeout.signal.aborted ? 'Notion 等待服务器响应已到请求总时限。' : 'Notion 请求已取消。', timeout.signal.aborted ? 'TIMEOUT' : 'ABORTED');
+    }
     if (error instanceof NotionError) throw error;
     // No raw response, URL, cookie, or cause chain is put into logs or chat.
     throw new NotionError('无法连接 Notion；请检查网络和网页服务状态。', 'TRANSPORT');

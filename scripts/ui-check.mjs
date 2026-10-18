@@ -94,14 +94,14 @@ try{
     await send('Page.navigate',{url:origin+'/?case='+item.name+'&theme='+item.theme+(item.interact?'&interact=1':'')},sessionId);
     let report;try{report=await ready;}finally{clearTimeout(timer);waiting.delete(item.name);}
     const screenshot=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},sessionId);
-    const path='verification/ui-0.3.0-'+item.name+'.png';await writeFile(join(root,path),Buffer.from(screenshot.data,'base64'));
+    const path='verification/ui-0.4.0-settings-'+item.name+'.png';await writeFile(join(root,path),Buffer.from(screenshot.data,'base64'));
     report.screenshot=path;report.browser=version.product;
     if(report.errors.length||report.overflow||report.expandedOverflow||!report.blankPassword||!report.secretHidden||report.initialDefault!==''||report.viewportWidth!==item.width||report.initialCards!==6||report.cssRules<50)throw Error('Rendering acceptance failed: '+JSON.stringify(report));
     if(item.interact&&(!report.searchWorks||!report.effortSaved||!report.credentialPreserved||!report.restoredModelDefault||report.refreshes!==2))throw Error('Interaction acceptance failed: '+JSON.stringify(report));
     reports.push(report);await send('Target.closeTarget',{targetId});console.log(JSON.stringify({case:item.name,width:report.viewportWidth,overflow:report.overflow,expandedOverflow:report.expandedOverflow,rendering:'passed',interactions:item.interact?'passed':'covered separately',screenshot:path}));
   }
   if(runtimeErrors.length||externalRequests.length)throw Error('Unexpected browser errors or external requests: '+JSON.stringify({runtimeErrors,externalRequests}));
-  await writeFile(join(root,'verification/ui-0.3.0.json'),JSON.stringify({clientSha256:createHash('sha256').update(client).digest('hex'),runtimeErrors,externalRequests,reports},null,2));
+  await writeFile(join(root,'verification/ui-0.4.0-settings.json'),JSON.stringify({clientSha256:createHash('sha256').update(client).digest('hex'),runtimeErrors,externalRequests,reports},null,2));
 }finally{
   try{if(socket?.readyState===1)await send('Browser.close');}catch{}
   socket?.close();browser?.kill();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));

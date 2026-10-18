@@ -678,14 +678,83 @@ const STYLES = [
   "@media(prefers-reduced-motion:reduce){.notion-v3 *{transition:none!important;scroll-behavior:auto!important}",
   "}"
 ].join('\n');
+
+const QUOTA_ENDPOINT='/api/dsh-notion-subscription/quota';
+const QUOTA_LABELS={sixHour:'6 小时',monthly:'本月'};
+const NULL_STORE={subscribe:()=>()=>{},getSnapshot:()=>null};
+function quotaPercent(value){const rounded=Math.round(value*10)/10;return (Number.isInteger(rounded)?String(rounded):rounded.toFixed(1))+'%';}
+function quotaAmount(value){return Number.isInteger(value)?String(value):String(Math.round(value*100)/100);}
+function quotaReset(resetAt,now){if(typeof resetAt!=='number'||!Number.isFinite(resetAt))return '';const delta=resetAt-now;if(delta<=0)return '即将重置';const minutes=Math.ceil(delta/60000);if(minutes<60)return minutes+' 分钟后重置';const hours=Math.floor(minutes/60);if(hours<48)return hours+' 小时 '+(minutes%60)+' 分后重置';return Math.ceil(hours/24)+' 天后重置';}
+function quotaLevel(remaining){return remaining<=5?'danger':remaining<=20?'warning':'normal';}
+function quotaDetail(window,now){if(!window)return '暂无该窗口数据';return quotaAmount(window.used)+' / '+quotaAmount(window.limit)+' · '+(quotaReset(window.resetAt,now)||'未提供重置时间');}
+function NotionComposerQuota({directory,request}){
+  const store=directory||NULL_STORE;
+  const modelState=useSyncExternalStore(listener=>store.subscribe(listener),()=>store.getSnapshot());
+  const selected=modelState?.current;
+  const active=selected?.provider===PROVIDER_ID;
+  const [mode,setMode]=useState('sixHour');
+  const [attempt,setAttempt]=useState(0);
+  const [status,setStatus]=useState({phase:'idle'});
+  const read=useMemo(()=>async()=>{
+    const call=request||(typeof window!=='undefined'&&typeof window.fetch==='function'?window.fetch.bind(window):null);
+    if(!call)throw new Error('当前环境不支持额度读取。');
+    const response=await call(QUOTA_ENDPOINT,{headers:{Accept:'application/json'},credentials:'same-origin'});
+    const body=await response.json();
+    if(!response.ok||body?.ok!==true)throw new Error(body?.error?.message||'读取 Notion 额度失败。');
+    return body.value;
+  },[request]);
+  useEffect(()=>{
+    if(!active){setStatus({phase:'idle'});return;}
+    let disposed=false;
+    setStatus(previous=>previous.phase==='ready'?previous:{phase:'loading'});
+    const run=async()=>{
+      try{const value=await read();if(!disposed)setStatus({phase:'ready',value,fetchedAt:Date.now()});}
+      catch(error){if(!disposed)setStatus({phase:'error',message:error instanceof Error?error.message:'读取 Notion 额度失败。'});}
+    };
+    void run();
+    const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void run();},60000);
+    return ()=>{disposed=true;window.clearInterval(timer);};
+  },[active,read,attempt]);
+  if(!active)return null;
+  const now=Date.now();
+  const value=status.phase==='ready'?status.value:null;
+  const other=mode==='sixHour'?'monthly':'sixHour';
+  const current=value?.windows?.[mode]||null;
+  const fallback=value?.windows?.[other]||null;
+  if(status.phase==='error')return h('div',{className:'ns-quota',role:'status'},h('span',{className:'ns-quota-text'},'Notion 额度暂不可用'),h('span',{className:'ns-quota-note'},status.message||''),h('button',{type:'button',className:'ns-quota-button',onClick:()=>setAttempt(count=>count+1)},'重试'));
+  const blocked=value&&value.state!=='ready'?(value.message||'Notion 额度暂不可用'):null;
+  if(blocked)return h('div',{className:'ns-quota',role:'status'},h('span',{className:'ns-quota-text'},blocked),h('button',{type:'button',className:'ns-quota-button',onClick:()=>setAttempt(count=>count+1)},'刷新'));
+  if(!current&&!fallback)return h('div',{className:'ns-quota',role:'status'},h('span',{className:'ns-quota-text'},status.phase==='loading'?'正在读取 Notion 额度…':'Notion 未提供额度窗口数据'));
+  const shown=current||fallback;
+  const shownMode=current?mode:other;
+  const level=quotaLevel(shown.remainingPercent);
+  const detail=quotaDetail(shown,now);
+  return h('div',{className:'ns-quota','data-level':level},h('button',{type:'button',className:'ns-quota-trigger',onClick:()=>setMode(shownMode===mode?other:mode),title:'点击切换为'+QUOTA_LABELS[shownMode===mode?other:mode]+'额度 · 基础 AI 额度，不含单独计费项目','aria-label':QUOTA_LABELS[shownMode]+'额度剩余 '+quotaPercent(shown.remainingPercent)+'，'+detail+'，点击切换'},h('span',{className:'ns-quota-label'},QUOTA_LABELS[shownMode]),h('strong',{className:'ns-quota-value'},'剩余 '+quotaPercent(shown.remainingPercent)),h('span',{className:'ns-quota-detail'},detail),h('span',{className:'ns-quota-switch','aria-hidden':true},'切换为'+(QUOTA_LABELS[shownMode===mode?other:mode]))),status.phase!=='ready'&&h('span',{className:'ns-quota-stale'},'读取中…'),value?.enforcement==='preview'&&h('span',{className:'ns-quota-preview'},'预览期'));
+}
+const QUOTA_CSS=[
+'.ns-quota{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:11px;line-height:1.5;color:var(--ns-muted,color-mix(in srgb,currentColor 65%,transparent))}',
+'.ns-quota-trigger{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--ns-border,color-mix(in srgb,currentColor 14%,transparent));border-radius:99px;background:transparent;color:inherit;padding:3px 10px 3px 9px;font:inherit;cursor:pointer;transition:background .15s,border-color .15s}',
+'.ns-quota-trigger:hover{background:var(--ns-soft,color-mix(in srgb,currentColor 4%,transparent))}',
+'.ns-quota-trigger:focus-visible{outline:3px solid color-mix(in srgb,currentColor 45%,transparent);outline-offset:2px}',
+'.ns-quota-label{opacity:.72;white-space:nowrap}.ns-quota-value{font-weight:600;white-space:nowrap}.ns-quota-detail{opacity:.66;white-space:nowrap}',
+'.ns-quota-switch{opacity:.5;border-left:1px solid var(--ns-border,color-mix(in srgb,currentColor 14%,transparent));padding-left:8px;white-space:nowrap}',
+'.ns-quota[data-level=warning] .ns-quota-value{color:#a9741c}.ns-quota[data-level=danger] .ns-quota-value{color:#c4453a}',
+'.ns-quota-text{white-space:nowrap}.ns-quota-note{opacity:.6;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+'.ns-quota-button{border:1px solid var(--ns-border,color-mix(in srgb,currentColor 14%,transparent));border-radius:99px;background:transparent;color:inherit;font:inherit;padding:2px 9px;cursor:pointer}',
+'.ns-quota-preview,.ns-quota-stale{opacity:.55;white-space:nowrap}',
+'@media(max-width:560px){.ns-quota-detail{display:none}.ns-quota-switch{display:none}}'
+].join('\n');
+
 function apply(ctx){
   const form=ctx.configForms.get(PLUGIN_ID);
   if(!form)return;
   const view={entryId:PLUGIN_ID,getSnapshot:()=>form.getSnapshot(),subscribe:listener=>form.subscribe(listener),mutate:(ops,revision)=>form.mutate(ops,revision)};
   const mirror=ctx.configForms.describe();
   const catalog=ctx.modelDirectories?.catalog;
+  const quotaDirectory=sessionId=>{try{return ctx.modelDirectories.directoryFor(sessionId).store;}catch{return null;}};
   const reloadModels=async()=>{if(typeof catalog?.load==='function'){catalog.invalidate?.();await catalog.load();const state=catalog.store?.getSnapshot();if(state?.status==='error'||(state?.value?.groups&&form.getSnapshot().value?.enabled&&!state.value.groups.some(group=>group.id===PROVIDER_ID)))throw new Error('Notion 模型目录暂不可用。');}};
-  ctx.effect(()=>{const style=document.createElement('style');style.textContent=STYLES;document.head.appendChild(style);return ()=>style.remove();},PLUGIN_ID+': styles');
+  ctx.effect(()=>{const style=document.createElement('style');style.textContent=STYLES+'\n'+QUOTA_CSS;document.head.appendChild(style);return ()=>style.remove();},PLUGIN_ID+': styles');
+  ctx.slots.inject('conversation.input.dock',()=>ctx.slots.register({name:'conversation.input.dock',id:PLUGIN_ID+'-quota',order:24,inject:(sessionId)=>({directory:quotaDirectory(sessionId)})},NotionComposerQuota));
   ctx.slots.inject('settings.section',()=>ctx.slots.register({name:'settings.section',id:PLUGIN_ID,order:46,label:()=> 'Notion AI 订阅'},()=>h(NotionSettings,{form:view,mirror,reloadModels,catalogStore:catalog?.store || EMPTY_STORE})));
 }
-module.exports={inject,apply,NotionSettings,makeDraft,mutationFor,DEFAULT_MODELS,modelsForDisplay,STYLES};
+module.exports={inject,apply,NotionSettings,NotionComposerQuota,makeDraft,mutationFor,DEFAULT_MODELS,modelsForDisplay,quotaPercent,quotaReset,quotaLevel,STYLES,QUOTA_CSS};

@@ -131,7 +131,7 @@ test('bridge rejects undeclared names before producing any tool-call chunk', asy
   await assert.rejects(async () => { for await (const chunk of adapter.stream({ ...request, tools: [{ name: 'read' }] })) chunks.push(chunk); }, code('INVALID_TOOL_ARGUMENTS'));
   assert.deepEqual(chunks, []);
 });
-test('host apply registers only its own route and observes volatile updates', () => {
+test('host apply registers only its own routes and observes volatile updates', () => {
   let replaced = 0;
   const listeners = new Map();
   const ctx = {
@@ -141,7 +141,11 @@ test('host apply registers only its own route and observes volatile updates', ()
       registerAdapter(ids, adapter) { assert.deepEqual(ids, ['notion-subscription']); assert.ok(adapter instanceof NotionSubscriptionAdapter); return Object.assign(() => {}, { replace() { replaced++; } }); },
     },
     on(event, listener) { listeners.set(event, listener); },
-    inject(names, callback) { assert.deepEqual(names, ['settings']); callback({ settings: { configure: (options) => assert.equal(options.auto, false) }, effect: (fn) => fn() }); },
+    webServer: { register(entry) { assert.equal(entry.kind, 'exact'); assert.equal(entry.path, '/api/dsh-notion-subscription/quota'); assert.equal(typeof entry.handler, 'function'); return () => {}; } },
+    inject(names, callback) {
+      if (names[0] === 'webServer') { callback({ webServer: ctx.webServer, effect: (fn) => { fn(); } }); return; }
+      assert.deepEqual(names, ['settings']); callback({ settings: { configure: (options) => assert.equal(options.auto, false) }, effect: (fn) => fn() });
+    },
   };
   apply(ctx, config);
   listeners.get('loader/volatile-update')();

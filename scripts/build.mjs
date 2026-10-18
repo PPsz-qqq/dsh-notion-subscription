@@ -1,7 +1,7 @@
 import { mkdir, readFile, copyFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 const root = new URL('../', import.meta.url);
-const files = ['index.js', 'models.js', 'reasoning.js', 'options.js', 'catalog.js', 'http.js', 'discovery.js', 'capture.js', 'messages.js', 'stream.js', 'transport.js'];
+const files = ['index.js', 'models.js', 'reasoning.js', 'options.js', 'catalog.js', 'http.js', 'quota.js', 'discovery.js', 'capture.js', 'messages.js', 'stream.js', 'transport.js'];
 await mkdir(new URL('lib/', root), { recursive: true });
 for (const file of files) await copyFile(new URL(`src/${file}`, root), new URL(`lib/${file}`, root));
 const client = await readFile(new URL('src/client.cjs', root), 'utf8');

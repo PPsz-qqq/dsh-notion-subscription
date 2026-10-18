@@ -1,6 +1,6 @@
 {
   "name": "dsh-notion-subscription",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Experimental DSH provider for an authorized Notion Business AI web subscription, with protocol details ported from pdxjie/notion2api.",
   "type": "module",
   "main": "lib/index.js",
@@ -16,7 +16,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node --test test/*.test.js",
-    "test:ui": "node scripts/ui-check.mjs",
+    "test:ui": "node scripts/ui-check.mjs && node scripts/ui-check-quota.mjs",
     "check": "node scripts/check.mjs",
     "smoke": "node scripts/smoke.mjs",
     "prepack": "node scripts/build.mjs"

@@ -72,7 +72,7 @@ test('a model without an upstream id never fabricates one', () => {
 });
 test('tool descriptions only enter prompts on explicit opt-in', () => {
   const plain = buildTranscript(resolveOptions(config, {}, true), { ...request, tools }, { threadType: 'workflow' });
-  assert.ok(!JSON.stringify(plain).includes('Available DSH tools'));
+  assert.ok(!JSON.stringify(plain).includes('External DSH client protocol'));
   const bridged = buildTranscript(resolveOptions({ ...config, toolBridge: true }, {}, true), { ...request, tools }, { threadType: 'workflow' });
   assert.ok(JSON.stringify(bridged).includes('dsh-tool-call'));
 });
@@ -87,4 +87,17 @@ test('reject malformed, undeclared and nonobject tool arguments', () => {
   for (const body of ['not json', '{"name":"delete","arguments":{}}', '{"name":"read","arguments":[]}', '{"name":"read","arguments":{},"extra":1}']) {
     assert.throws(() => parseToolReply(`\`\`\`dsh-tool-call\n${body}\n\`\`\``, tools), (error) => error.code === 'INVALID_TOOL_ARGUMENTS');
   }
+});
+
+test('external action proposals preserve Notion read-only restrictions', () => {
+  const options = resolveOptions({ ...config, toolBridge: true }, {}, true);
+  const body = buildRequest(options, { ...request, tools }, { threadType: 'workflow' });
+  const prompt = userTurnTexts(body.transcript)[0];
+  assert.match(prompt, /structured next-step proposal/);
+  assert.match(prompt, /not Notion-native tools/);
+  assert.match(prompt, /validate its tool schemas and permissions/);
+  assert.match(prompt, /Do not claim an action succeeded/);
+  assert.equal(body.transcript[0].value.useReadOnlyMode, true);
+  assert.equal(body.transcript[0].value.enableUpdatePageV2Tool, false);
+  assert.equal(body.transcript[0].value.enableRunAgentTool, false);
 });

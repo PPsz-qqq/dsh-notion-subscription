@@ -1,3 +1,4 @@
+import { NotionQuotaReader, registerQuotaRoute } from './quota.js';
 import z from '@deepseek-ai/schemastery';
 import { LlmAdapter, LlmError, attributionHeaders, resolveRetryPolicy } from '@deepseek-ai/dsh-llm';
 import { DEFAULT_MODELS, PLUGIN_ID, PROVIDER_ID, NotionError, modelInfo, normalizeCookie, resolveOptions } from './options.js';
@@ -167,6 +168,15 @@ export class NotionSubscriptionAdapter extends LlmAdapter {
 
 export function apply(ctx, config) {
   const adapter = new NotionSubscriptionAdapter(() => config);
+  const quota = new NotionQuotaReader({
+    readOptions: () => resolveOptions(adapter.readConfig(), adapter.environment, false),
+    resolveIdentity: (options, signal) => adapter.resolveIdentity(options, signal),
+    fetchFn: adapter.fetchFn,
+    onAuthFailure: () => { adapter.identity = undefined; adapter.catalog = undefined; },
+  });
+  ctx.inject(['webServer'], (child) => {
+    child.effect(() => registerQuotaRoute(child, quota), `${PLUGIN_ID}: quota HTTP route`);
+  });
   ctx.llm.registerConfigurableProviders([{
     provider: PROVIDER_ID,
     displayName: 'Notion AI（商业版订阅 · 实验性）',
@@ -175,7 +185,7 @@ export function apply(ctx, config) {
   }]);
   const registration = ctx.llm.registerAdapter([PROVIDER_ID], adapter);
   // Configuration is resolved per prepared request, not cached across accounts.
-  ctx.on('loader/volatile-update', () => registration.replace([PROVIDER_ID]));
+  ctx.on('loader/volatile-update', () => { quota.invalidate(); registration.replace([PROVIDER_ID]); });
   ctx.inject(['settings'], (child) => {
     child.effect(() => child.settings.configure({ auto: false }, ctx.fiber), `${PLUGIN_ID}: custom settings page`);
   });

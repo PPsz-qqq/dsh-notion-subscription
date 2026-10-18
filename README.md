@@ -1,4 +1,4 @@
-# DSH Notion AI Subscription 0.3.0（实验版）
+# DSH Notion AI Subscription 0.4.0（实验版）
 
 安装包下载：[GitHub Releases](https://github.com/PPsz-qqq/dsh-notion-subscription/releases/latest)。
 
@@ -8,7 +8,7 @@ DSH 原生 Provider，使用你本人获授权的 Notion 网页登录态直连 A
 
 需要 Node.js 22+、兼容 DSH 0.2.0-rc.2 的 Host。在插件页安装本地组合包：
 
-    ./dsh-notion-subscription-0.3.0.tgz
+    ./dsh-notion-subscription-0.4.0.tgz
 
 升级后重启 DSH，再刷新模型目录。包内含 Host 模块、设置页 factory 和注册 patch，不需要额外 Web 服务。安装包校验不能替代 Host 重载验证。
 
@@ -22,6 +22,36 @@ DSH 原生 Provider，使用你本人获授权的 Notion 网页登录态直连 A
 可选环境变量：NOTION_SPACE_ID、NOTION_USER_ID。关闭 autoDiscover 后两个 UUID 都必填。默认请求 app.notion.com，保留 www.notion.so 作为兼容选项；连接重置不能单独证明域名迁移、限流或 Cookie 失效。
 
 身份缓存按域名、凭据和手工身份隔离，5 分钟过期；认证失败时清除。Cookie 是登录凭据：只写/脱敏显示不等于磁盘加密。本插件不读取浏览器 Cookie 数据库，也不续期登录态。
+
+## 0.4.0：输入框下的额度显示与超时修正
+
+输入框正下方显示 Notion 基础 AI 额度：默认 **6 小时**窗口，**点击即可切换为本月**，再点切回。仅当当前会话使用 Notion 模型时出现，其他 Provider 下不显示。
+
+- 数据来自 `getCreditRateLimitStatus`（`{"spaceId": ...}`），读取 `window`（6h，`used`/`limit`/`resetsInSeconds`）与 `billingPeriodWindow`（账期，`periodEndMs`）。按真实 limit 计算百分比，超过额度时保留实际用量、仅把显示剩余压到 0。
+- 只读：不消耗 AI 额度，不创建会话，不写入任何 Notion 数据，也不发送推理请求。
+- 展示 `used / limit` 与重置时间；`enforcement: preview` 时标注“预览期”。窗口缺失显示“暂无该窗口数据”，不补零、不猜数字。
+- 覆盖基础 AI 额度；Custom Agents/Workers 等单独计费项目不在其中。
+- 缓存 60 秒（失败 15 秒），读取不重叠；切换工作区、凭据或线路配置后旧结果立即失效，不会串号。
+- 浏览器端通过同源只读路由 `/api/dsh-notion-subscription/quota` 读取；拒绝跨站请求与非 GET 方法，响应 `no-store`，不回传 Cookie。
+- 超时：首段数据受请求总时限约束，开始收流后受 `idleTimeoutMs` 约束；错误信息区分“首段超时”“流中途停滞（已接收 N 字节）”和“总时限”，不自动重试，避免重复消耗。
+
+本次验收：188 项离线回归通过；真实 Chrome 检查浅色、深色、390px 窄屏及预览期四种额度渲染，无横向溢出、无外部请求，点击切换后标签与数值同步更新。额度接口用当前账号做过一次只读核验（未发送推理请求）。**未在新 Host 会话中实测挂载后的完整交互**，安装后需重启 DSH。
+
+已知限制：额度接口属 Notion 内部接口，随时可能变化；仅 Business/Enterprise 等工作区提供该额度，不适用时明确显示而不是空白。
+
+## 0.3.1：本地文件工具桥接
+
+开启路径：**Notion AI 订阅 → 高级设置 → 实验性文本工具桥接 → 保存**。使用包含本地文件工具的 DSH Agent/编程会话；纯聊天预设不提供工具时，模型仍只能回答文本。安装后重启 DSH 加载新代码。
+
+- Notion 只生成外部客户端的结构化操作提案，不声称自己能直接访问本机，也不调用 Notion 工作区动作来替代本地操作。
+- DSH 接收提案后，按当前会话的工具、参数及权限规则执行读写，再把结果交回模型。开启桥接不扩大系统权限，建议限制实际项目可访问的路径和工具。
+- Notion 请求仍保持 useReadOnlyMode: true，并保持工作区编辑、搜索和自动化相关开关关闭；没有为解决 Ask mode 拒绝而放开云端编辑能力。
+- 这是实验性文本桥接，不是 Notion 官方原生 function calling。未知工具名或非法协议会被拒绝；不保证所有模型都稳定生成工具提案。
+- 文件操作在本机，但提供给模型的文件内容与工具结果仍会发送到 Notion，可能进入云端会话记录。完全离线处理需要本地模型或本地固定脚本。
+
+验证：167 项离线回归通过；在 GPT-6.1 Sol 路由上，修正后的适配器生成 read、edit 提案，由本会话 DSH 原生工具实际执行并回读。临时文件的随机标记保留，修改回执正确取自读取内容。3 次获授权请求已用完，其中第 1 次是旧桥接的 Ask mode 拒绝，后 2 次完成新桥接的读、改提案；没有再请求模型最终确认。未使用真实项目文件，未向 Gemini 发送推理请求，未另开 GUI 会话验证完整调度循环。
+
+仅工具提示与协议说明更新，设置界面保持 0.3.0 版本；线上可下载版本以 GitHub Releases 为准。
 
 ## 0.3.0：思考强度与新设置页
 
@@ -101,8 +131,11 @@ captureDir 留空不记录。启用后保存请求体和响应帧，过滤认证
 
 ## 界面预览
 
-以下截图使用合成配置，不含真实 Cookie 或工作区信息，也不是 AI 连通性证明。
+以下截图使用合成配置与合成额度数值，不含真实 Cookie、工作区或额度信息，也不是 AI 连通性证明。
 
-- [浅色界面](verification/ui-0.3.0-light.png)
-- [深色界面](verification/ui-0.3.0-dark.png)
-- [390px 窄屏](verification/ui-0.3.0-mobile.png)
+- [设置页 · 浅色](verification/ui-0.4.0-settings-light.png)
+- [设置页 · 深色](verification/ui-0.4.0-settings-dark.png)
+- [设置页 · 390px 窄屏](verification/ui-0.4.0-settings-mobile.png)
+- [输入框额度 · 6 小时（浅色）](verification/ui-0.4.0-quota-light.png)
+- [输入框额度 · 深色](verification/ui-0.4.0-quota-dark.png)
+- [输入框额度 · 390px 窄屏](verification/ui-0.4.0-quota-mobile.png)

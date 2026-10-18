@@ -356,11 +356,15 @@ export class NotionStreamState {
   }
 }
 
-function abortError(signal) {
-  return new NotionError(signal?.reason?.code === 'TIMEOUT' ? 'Notion 请求超时。' : 'Notion 请求已取消。', signal?.reason?.code === 'TIMEOUT' ? 'TIMEOUT' : 'ABORTED');
+function abortError(signal, bytes) {
+  const timedOut = signal?.reason?.code === 'TIMEOUT';
+  const message = timedOut
+    ? bytes === 0 ? 'Notion 等待首段响应数据已到请求总时限。' : 'Notion 请求已到总时限（已接收 ' + bytes + ' 字节）。'
+    : 'Notion 请求已取消。';
+  return new NotionError(message, timedOut ? 'TIMEOUT' : 'ABORTED');
 }
 
-export async function* readNotionStream(body, { signal, idleTimeoutMs = 60000, maxResponseBytes = 32 * 1024 * 1024, onFrame, ...stateOptions } = {}) {
+export async function* readNotionStream(body, { signal, idleTimeoutMs = 60000, firstByteTimeoutMs = idleTimeoutMs, maxResponseBytes = 32 * 1024 * 1024, onFrame, ...stateOptions } = {}) {
   if (!body?.getReader) throw new NotionError('Notion 响应没有可读流。', 'PROTOCOL_ERROR');
   const reader = body.getReader();
   const decoder = new TextDecoder('utf-8', { fatal: true });
@@ -378,14 +382,19 @@ export async function* readNotionStream(body, { signal, idleTimeoutMs = 60000, m
   };
   try {
     for (;;) {
-      if (signal?.aborted) throw abortError(signal);
+      if (signal?.aborted) throw abortError(signal, bytes);
       let timer;
+      const waitMs = bytes === 0 ? firstByteTimeoutMs : idleTimeoutMs;
       const idle = new Promise((_, reject) => {
-        timer = setTimeout(() => { reject(new NotionError('Notion 响应流长时间没有数据。', 'TIMEOUT')); cancel(); }, idleTimeoutMs);
+        timer = setTimeout(() => {
+          const message = bytes === 0 ? 'Notion 等待首段响应数据超时。' : 'Notion 响应流长时间没有数据（已接收 ' + bytes + ' 字节）。';
+          reject(new NotionError(message, 'TIMEOUT'));
+          cancel();
+        }, waitMs);
       });
       let item;
       try { item = await Promise.race([reader.read(), idle]); } finally { clearTimeout(timer); }
-      if (signal?.aborted) throw abortError(signal);
+      if (signal?.aborted) throw abortError(signal, bytes);
       if (item.done) {
         reachedEnd = true;
         buffer += decoder.decode();
@@ -405,7 +414,7 @@ export async function* readNotionStream(body, { signal, idleTimeoutMs = 60000, m
     }
     state.finish();
   } catch (error) {
-    if (signal?.aborted) throw abortError(signal);
+    if (signal?.aborted) throw abortError(signal, bytes);
     if (error instanceof NotionError) throw error;
     throw new NotionError('Notion 响应中断或编码无效。', 'TRANSPORT');
   } finally {

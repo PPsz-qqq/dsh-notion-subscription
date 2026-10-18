@@ -84,16 +84,19 @@ test('clear Cookie is explicit and conflicts are not reported as success', async
     assert.ok(document.body.textContent.includes('草稿已保留'));
   });
 });
-test('DSH settings slot registration and styles dispose cleanly', async () => {
+test('DSH settings and dock quota slots register and styles dispose cleanly', async () => {
   await withDom(async () => {
     const props = fixtures();
     let dispose;
     let registered;
     const ctx = {
       configForms: { get: (id) => { assert.equal(id, 'dsh-notion-subscription'); return props.form; }, describe: () => props.mirror },
-      modelDirectories: { catalog: { load: async () => {} } },
+      modelDirectories: { catalog: { load: async () => {} }, directoryFor: () => ({ store: { subscribe: () => () => {}, getSnapshot: () => ({ current: null }) } }) },
       effect(fn) { dispose = fn(); },
-      slots: { inject: (name, callback) => { assert.equal(name, 'settings.section'); callback(); }, register: (metadata, component) => { registered = { metadata, component }; } },
+      slots: {
+        inject: (name, callback) => { assert.ok(['settings.section', 'conversation.input.dock'].includes(name)); callback(); },
+        register: (metadata, component) => { assert.equal(typeof component, 'function'); if (metadata.name === 'settings.section') registered = { metadata, component }; },
+      },
     };
     apply(ctx);
     assert.equal(registered.metadata.id, 'dsh-notion-subscription');
