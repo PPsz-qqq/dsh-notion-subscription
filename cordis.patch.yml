@@ -1,0 +1,4 @@
+# Install one independent host/client plugin; do not alter other providers.
+- insert:
+    - id: dsh-notion-subscription
+      name: dsh-notion-subscription

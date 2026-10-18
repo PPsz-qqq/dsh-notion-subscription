@@ -1,0 +1,318 @@
+{
+  "transcript": [
+    {
+      "type": "config"
+    },
+    {
+      "type": "context"
+    },
+    {
+      "type": "user"
+    }
+  ],
+  "frames": [
+    {
+      "type": "patch-start",
+      "data": {
+        "s": [
+          {
+            "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "type": "agent-instruction-state"
+          }
+        ]
+      },
+      "version": 1
+    },
+    {
+      "type": "patch",
+      "v": [
+        {
+          "o": "a",
+          "p": [
+            "s",
+            "-"
+          ],
+          "v": {
+            "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "type": "agent-turn-full-record-map"
+          }
+        }
+      ]
+    },
+    {
+      "type": "patch",
+      "v": [
+        {
+          "o": "a",
+          "p": [
+            "s",
+            "-"
+          ],
+          "v": {
+            "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "type": "agent-tool-result"
+          }
+        }
+      ]
+    },
+    {
+      "type": "patch",
+      "v": [
+        {
+          "o": "a",
+          "p": [
+            "s",
+            "-"
+          ],
+          "v": {
+            "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "type": "agent-inference",
+            "value": [
+              {
+                "type": "text",
+                "content": "<lang"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "patch",
+      "v": [
+        {
+          "o": "x",
+          "p": [
+            "s",
+            "3",
+            "value",
+            "0",
+            "content"
+          ],
+          "v": " primary"
+        }
+      ]
+    },
+    {
+      "type": "patch",
+      "v": [
+        {
+          "o": "x",
+          "p": [
+            "s",
+            "3",
+            "value",
+            "0",
+            "content"
+          ],
+          "v": "=\""
+        }
+      ]
+    },
+    {
+      "type": "patch",
+      "v": [
+        {
+          "o": "x",
+          "p": [
+            "s",
+            "3",
+            "value",
+            "0",
+            "content"
+          ],
+          "v": "zh"
+        }
+      ]
+    },
+    {
+      "type": "patch",
+      "v": [
+        {
+          "o": "x",
+          "p": [
+            "s",
+            "3",
+            "value",
+            "0",
+            "content"
+          ],
+          "v": "-C"
+        }
+      ]
+    },
+    {
+      "type": "patch",
+      "v": [
+        {
+          "o": "x",
+          "p": [
+            "s",
+            "3",
+            "value",
+            "0",
+            "content"
+          ],
+          "v": "N"
+        }
+      ]
+    },
+    {
+      "type": "patch",
+      "v": [
+        {
+          "o": "r",
+          "p": [
+            "s",
+            "3",
+            "value",
+            "0"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "patch",
+      "v": [
+        {
+          "o": "a",
+          "p": [
+            "s",
+            "3",
+            "value",
+            "-"
+          ],
+          "v": {
+            "type": "text",
+            "content": "OK"
+          }
+        }
+      ]
+    },
+    {
+      "type": "patch",
+      "v": [
+        {
+          "o": "a",
+          "p": [
+            "s",
+            "3",
+            "*"
+          ],
+          "v": 1792317161731
+        },
+        {
+          "o": "a",
+          "p": [
+            "s",
+            "3",
+            "*"
+          ],
+          "v": 3
+        },
+        {
+          "o": "a",
+          "p": [
+            "s",
+            "3",
+            "*"
+          ],
+          "v": 13
+        },
+        {
+          "o": "a",
+          "p": [
+            "s",
+            "3",
+            "*"
+          ],
+          "v": 0
+        },
+        {
+          "o": "a",
+          "p": [
+            "s",
+            "3",
+            "*"
+          ],
+          "v": 14519
+        },
+        {
+          "o": "a",
+          "p": [
+            "s",
+            "3",
+            "*"
+          ],
+          "v": 26.003742000088096
+        },
+        {
+          "o": "a",
+          "p": [
+            "s",
+            "3",
+            "*"
+          ],
+          "v": 1125.0055019995198
+        },
+        {
+          "o": "a",
+          "p": [
+            "s",
+            "3",
+            "*"
+          ],
+          "v": 1099.0017599994317
+        },
+        {
+          "o": "a",
+          "p": [
+            "s",
+            "3",
+            "*"
+          ],
+          "v": 1000000
+        },
+        {
+          "o": "a",
+          "p": [
+            "s",
+            "3",
+            "*"
+          ],
+          "v": 872000
+        },
+        {
+          "o": "a",
+          "p": [
+            "s",
+            "3",
+            "model"
+          ],
+          "v": "xxxxxxxxxxxxxxxx"
+        }
+      ]
+    },
+    {
+      "type": "patch",
+      "v": [
+        {
+          "o": "a",
+          "p": [
+            "s",
+            "1",
+            "*"
+          ],
+          "v": [
+            {
+              "version": 20
+            },
+            {
+              "version": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

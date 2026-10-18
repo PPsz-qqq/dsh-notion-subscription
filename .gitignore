@@ -1,0 +1,12 @@
+node_modules/
+lib/
+*.tgz
+.env
+.env.*
+!.env.example
+*.local.yml
+.publication/
+.development/
+.diagnostics/
+verification/*.json
+*.log
